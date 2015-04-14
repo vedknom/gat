@@ -19,5 +19,11 @@ module Gat
       gat = Gat.open(filepath)
       gat.edit(filepath)
     end
+
+    desc 'check', 'Checkpoint current changes'
+    def check
+      gat = Gat.open('.')
+      gat.check
+    end
   end
 end

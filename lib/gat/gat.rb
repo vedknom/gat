@@ -79,6 +79,10 @@ module Gat
       end
       puts(target_path)
     end
+
+    def check
+      current_branch.checkpoint(git)
+    end
   end
 end
 
