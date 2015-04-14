@@ -5,10 +5,15 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'pathname'
+require 'fileutils'
 
 module Gat
   class Path
     attr_reader :name
+
+    def self.from(filepath)
+      filepath.kind_of?(self) ? filepath : new(filepath)
+    end
 
     def self.from_git(filepath)
       path = new(filepath)
@@ -21,6 +26,21 @@ module Gat
 
     def self.git_root(filepath)
       from_git(filepath).git_root
+    end
+
+    def self.mkfilepaths(prefix, spec)
+      pathname = Pathname(prefix)
+      pathname.mkdir unless pathname.directory?
+      spec.each do |k, v|
+        current = pathname + k
+        if v.nil?
+          FileUtils.touch(current)
+        elsif v.kind_of?(Hash)
+          mkfilepaths(current, v)
+        else
+          raise ArgumentError, "Invalid value #{v} type #{v.class}"
+        end
+      end
     end
 
     def initialize(filepath)
@@ -81,17 +101,18 @@ module Gat
       gat_repo + filepath
     end
 
-    def gat_branches_dir
-      gat_dir_for('branches')
+    def gat_branches_subdir
+      'branches'
     end
 
-    def gat_std_dirs_each
-      yield gat_branches_dir
+    def gat_branches_dir
+      gat_repo + gat_branches_subdir
     end
 
     def gat_mkdirs
-      gat_repo.mkdir
-      gat_std_dirs_each { |pathname| pathname.mkdir }
+      Path.mkfilepaths(gat_repo, {
+        gat_branches_subdir => {}
+      })
     end
   end
 end

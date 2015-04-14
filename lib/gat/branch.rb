@@ -4,23 +4,48 @@
 
 require 'rubygems'
 require 'bundler/setup'
-require 'fileutils'
+
+require 'gat/path'
 
 module Gat
   class Branch
     def initialize(root_filepath, name)
-      @root = root_filepath
+      @root = Path.from(root_filepath)
       @name = name
     end
 
     def setup
-      branch_dir.mkdir unless branch_dir.directory?
-      FileUtils.touch(branch_dir + 'queue')
-      FileUtils.touch(branch_dir + 'current')
+      Path.mkfilepaths(branch_dir, {
+        checkpoints_subdir => {}
+      })
     end
 
     def branch_dir
       @root.gat_branches_dir + @name
+    end
+
+    def branch_file(filepath)
+      branch_dir + filepath
+    end
+
+    def checkpoints_subdir
+      'checkpoints'
+    end
+
+    def checkpoints_dir
+      branch_dir + checkpoints_subdir
+    end
+
+    def add_checkpoint(checkpoint)
+      unless checkpoint.nil?
+        checkpoint.add_to(self)
+        branch_file('queue').open('a') do |f|
+          f.puts(checkpoint.id)
+        end
+        branch_file('current').open('w') do |f|
+          f.puts(checkpoint.id)
+        end
+      end
     end
   end
 end
