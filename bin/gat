@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# vim: set sw=2 ts=2 sts=2 fdm=indent fml=0:
+
+require 'rubygems'
+require 'bundler/setup'
+require 'gat/cli'
+
+Gat::CLI.start(ARGV)
