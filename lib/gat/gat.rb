@@ -80,9 +80,48 @@ module Gat
       puts(target_path)
     end
 
-    def check
-      current_branch.checkpoint(git)
+    def write_default_message(default_message)
+      message_file = @root.gat_file('CHECK_MSG')
+      message_file.open('w') do |f|
+        f.puts(default_message)
+      end
+      message_file
+    end
+
+    def message_with_default(default_message)
+      message = nil
+      message_file = write_default_message(default_message)
+      editor = ENV['EDITOR'] || 'vim'
+      success = system("#{editor} \"#{message_file}\"")
+      if !success
+        warn "Error: editor #{editor} quit with status #{$?}"
+      elsif message_file.exist?
+        lines = message_file.open('r') do |f|
+          f.readlines.reject do |line|
+            line.match(/^\s*#/) || line.match(/^\s*$/)
+          end
+        end
+        message = lines.join
+      end
+      FileUtils.rm(message_file, :force => true)
+      message
+    end
+
+    def check(message)
+      branch = current_branch
+      checkpoint = branch.current_checkpoint
+      if !checkpoint.change?
+        warn "No changes to check with, updating to HEAD."
+        checkpoint.remove
+        branch.checkpoint(git)
+      else
+        message ||= message_with_default(branch.default_message_for(checkpoint))
+        if message.nil? || message.empty?
+          warn "Not checking due to empty check message."
+        else
+          branch.check(git, message)
+        end
+      end
     end
   end
 end
-

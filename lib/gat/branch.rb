@@ -17,6 +17,10 @@ module Gat
       @name = name
     end
 
+    def to_s
+      name
+    end
+
     def setup
       Path.mkfilepaths(branch_dir, {
         checkpoints_subdir => {}
@@ -47,7 +51,7 @@ module Gat
 
     def add_checkpoint(checkpoint)
       unless checkpoint.nil?
-        checkpoint.add_to(self)
+        checkpoint.add
         branch_file('queue').open('a') do |f|
           f.puts(checkpoint.id)
         end
@@ -57,16 +61,55 @@ module Gat
       end
     end
 
+    def checkpoint_for(id)
+      Checkpoint.from(checkpoints_dir, id)
+    end
+
+    def first_checkpoint_id
+      branch_file('queue').open('r').readline.chomp
+    end
+
+    def first_checkpoint
+      checkpoint_for(first_checkpoint_id)
+    end
+
     def current_checkpoint_id
       branch_file('current').open('r').readline.chomp
     end
 
     def current_checkpoint
-      Checkpoint.from(checkpoints_dir, current_checkpoint_id)
+      checkpoint_for(current_checkpoint_id)
     end
 
     def current_checkpoint_files_dir
       Checkpoint.files_dir(checkpoints_dir, current_checkpoint_id)
+    end
+
+    def queue_size
+      branch_file('queue').open('r').readlines.size
+    end
+
+    def default_message_for(checkpoint)
+      default_header = [
+        "",
+        "# Please enter the check message for your changes.",
+        "# On branch #{self} (checkpoint #{checkpoint})",
+        "# Files to be copied:"
+      ]
+      checkpoint.relative_glob do |p|
+        default_header << "#\t#{p}"
+      end
+      default_header.join("\n")
+    end
+
+    def check(git, message)
+      first = queue_size == 1
+      current = current_checkpoint
+      checking = current.check(message)
+      if checking && first
+        current.commit(git)
+      end
+      checkpoint(git)
     end
   end
 end

@@ -21,9 +21,10 @@ module Gat
     end
 
     desc 'check', 'Checkpoint current changes'
+    option :message, :aliases => :m
     def check
       gat = Gat.open('.')
-      gat.check
+      gat.check(options[:message])
     end
   end
 end

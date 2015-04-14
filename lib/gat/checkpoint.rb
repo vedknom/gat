@@ -6,6 +6,8 @@ require 'rubygems'
 require 'bundler/setup'
 require 'securerandom'
 
+require 'gat/path'
+
 module Gat
   class Checkpoint
     attr_reader :id, :tracking
@@ -26,20 +28,82 @@ module Gat
       id
     end
 
-    def files_dir
-      @dirpath + id + 'files'
+    def checkpoint_dir
+      @dirpath + id
     end
 
-    def add_to(branch)
-      dir = branch.checkpoints_dir + id
-      if dir.directory?
+    def checkpoint_file(filepath)
+      checkpoint_dir + filepath
+    end
+
+    def files_dir
+      checkpoint_file('files')
+    end
+
+    def relative_glob
+      result = block_given? ? nil : []
+      dir = files_dir
+      Pathname.glob(dir + '**/*') do |p|
+        relative = p.relative_path_from(dir)
+        if block_given?
+          yield relative
+        else
+          result << relative
+        end
+      end
+      result
+    end
+
+    def add
+      dirpath = checkpoint_dir
+      if dirpath.directory?
         warn "Error: checkpoint already exists #{checkpoint}"
       else
-        dir.mkdir
-        (dir + 'tracking').open('w') do |f|
+        dirpath.mkdir
+        checkpoint_file('tracking').open('w') do |f|
           f.puts(tracking)
         end
       end
+    end
+
+    def change?
+      change = false
+      Pathname.glob(files_dir + '**/*') do |p|
+        change = true
+        break
+      end
+      change
+    end
+
+    def checking?
+      checkpoint_file('checking').exist?
+    end
+
+    def check(message)
+      already_checking = checking?
+      if already_checking
+        warn "Error: checkpoint '#{self}' is already checking"
+      else
+        checkpoint_file('checking').open('w') { |f| f.write(message) }
+      end
+      !already_checking
+    end
+
+    def commit(git)
+      already_committed = checkpoint_file('commit').exist?
+      if already_committed
+        warn "Error: checkpoint '#{self}' has already been committed"
+      else
+        Path.rsync(files_dir, git.dir.path)
+        message = checkpoint_file('checking').open('r') { |f| f.read }
+        git.commit_all(message)
+        commit_sha = git.revparse('HEAD')
+        checkpoint_file('commit').open('w') { |f| f.puts(commit_sha) }
+      end
+    end
+
+    def remove
+      FileUtils.rm_r(checkpoint_dir)
     end
   end
 end

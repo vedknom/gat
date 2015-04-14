@@ -43,6 +43,18 @@ module Gat
       end
     end
 
+    def self.rsync(source_filepath, target_filepath, mkdir = false)
+      target = Pathname(target_filepath)
+      source = Pathname(source_filepath)
+      target += source.basename if mkdir
+      Pathname.glob(source + '**/*') do |f|
+        unless f.directory?
+          relative = f.relative_path_from(source)
+          FileUtils.cp(f, target + relative)
+        end
+      end
+    end
+
     def initialize(filepath)
       @name = Pathname(filepath)
     end
@@ -97,7 +109,7 @@ module Gat
       git_root.name + gat_subdir
     end
 
-    def gat_dir_for(filepath)
+    def gat_file(filepath)
       gat_repo + filepath
     end
 
@@ -106,7 +118,7 @@ module Gat
     end
 
     def gat_branches_dir
-      gat_repo + gat_branches_subdir
+      gat_file(gat_branches_subdir)
     end
 
     def gat_mkdirs
