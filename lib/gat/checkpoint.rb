@@ -10,13 +10,24 @@ module Gat
   class Checkpoint
     attr_reader :id, :tracking
 
-    def initialize(commitish, id = SecureRandom.uuid)
+    def self.from(dirpath, id)
+      dir = dirpath + id
+      tracking = (dir + 'tracking').open('r').readline.chomp
+      new(dirpath, tracking, id)
+    end
+
+    def initialize(dirpath, commitish, id = SecureRandom.uuid)
+      @dirpath = dirpath
       @tracking = commitish
       @id = id
     end
 
     def to_s
       id
+    end
+
+    def files_dir
+      @dirpath + id + 'files'
     end
 
     def add_to(branch)

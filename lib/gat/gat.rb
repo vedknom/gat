@@ -5,6 +5,7 @@
 require 'rubygems'
 require 'bundler/setup'
 require 'git'
+require 'fileutils'
 
 require 'gat/path'
 require 'gat/branch'
@@ -35,6 +36,11 @@ module Gat
       end
     end
 
+    def self.edit(filepath)
+      gat = open(filepath)
+      gat.edit(filepath)
+    end
+
     def self.open(filepath)
       path = Path.git_root(filepath)
       new(path)
@@ -48,13 +54,30 @@ module Gat
       @git ||= Git.open(@root)
     end
 
+    def current_branch
+      Branch.new(@root, git.current_branch)
+    end
+
     def add_current_branch
-      branch_name = git.current_branch
-      branch = Branch.new(@root, branch_name)
+      branch = current_branch
       branch.setup
-      branch_sha = git.revparse(branch_name)
-      checkpoint = Checkpoint.new(branch_sha)
-      branch.add_checkpoint(checkpoint)
+      branch.checkpoint(git)
+    end
+
+    def edit(filepath)
+      pathname = Pathname(filepath).expand_path
+      relative = pathname.relative_path_from(@root.name)
+      branch = current_branch
+      checkpoint = branch.current_checkpoint
+      target_path = checkpoint.files_dir + relative
+      unless target_path.exist?
+        FileUtils.mkdir_p(target_path.dirname)
+        target_path.open('w') do |f|
+          content = git.show(checkpoint.tracking, relative)
+          f.print(content)
+        end
+      end
+      puts(target_path)
     end
   end
 end

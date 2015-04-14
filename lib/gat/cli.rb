@@ -9,9 +9,15 @@ require 'gat/gat'
 
 module Gat
   class CLI < Thor
-    desc "init", "Initialize Gat in a Git repository"
+    desc 'init', 'Initialize Gat in a Git repository'
     def init
       Gat.init('.')
+    end
+
+    desc 'edit FILE', 'Edit FILE inside current checkpoint'
+    def edit(filepath)
+      gat = Gat.open(filepath)
+      gat.edit(filepath)
     end
   end
 end
