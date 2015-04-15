@@ -51,7 +51,8 @@ module Gat
     end
 
     def git
-      @git ||= Git.open(@root)
+      @git = Git.open(@root) unless defined?(@git)
+      @git
     end
 
     def current_branch

@@ -94,7 +94,8 @@ module Gat
     end
 
     def git_root
-      @git_root ||= ascend_find { |p| p.git_root? }
+      @git_root = ascend_find { |p| p.git_root? } unless defined?(@git_root)
+      @git_root
     end
 
     def git?
