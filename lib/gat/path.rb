@@ -30,7 +30,7 @@ module Gat
 
     def self.mkfilepaths(prefix, spec)
       pathname = Pathname(prefix)
-      pathname.mkdir unless pathname.directory?
+      FileUtils.mkdir_p(pathname) unless pathname.directory?
       spec.each do |k, v|
         current = pathname + k
         if v.nil?
@@ -120,12 +120,6 @@ module Gat
 
     def gat_branches_dir
       gat_file(gat_branches_subdir)
-    end
-
-    def gat_mkdirs
-      Path.mkfilepaths(gat_repo, {
-        gat_branches_subdir => {}
-      })
     end
   end
 end

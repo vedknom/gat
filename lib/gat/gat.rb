@@ -8,31 +8,20 @@ require 'git'
 require 'fileutils'
 
 require 'gat/path'
+require 'gat/settings'
 require 'gat/branch'
 require 'gat/checkpoint'
+require 'gat/repository'
 
 module Gat
   class Gat
-    def self.setup(path)
-      gat_repo = path.gat_repo
-      exists = gat_repo.directory?
-      if exists
-        puts "Gat is already initialized in #{gat_repo}"
-      else
-        path.gat_mkdirs
-        puts "Initialized Gat data in #{gat_repo}"
-      end
-      !exists
-    end
+    CHECK_MESSAGE_FILENAME = 'CHECK_MSG'
 
     def self.init(filepath)
-      path = Path.from_git(filepath)
+      path = Path.git_root(filepath)
       unless path.nil?
-        root = path.git_root
-        if setup(root)
-          gat = open(root)
-          gat.add_current_branch
-        end
+        repo = Repository.new(path)
+        repo.setup
       end
     end
 
@@ -43,31 +32,39 @@ module Gat
 
     def self.open(filepath)
       path = Path.git_root(filepath)
-      new(path)
+      repo = Repository.new(path)
+      new(repo)
     end
 
-    def initialize(root_filepath)
-      @root = Path.from(root_filepath)
+    def initialize(repository)
+      @repository = repository
+      @settings = repository.settings
+      setup
+    end
+
+    def setup
+      branch = current_branch
+      unless branch.setup?
+        branch.checkpoint(git)
+      end
+    end
+
+    def root
+      @repository.root
     end
 
     def git
-      @git = Git.open(@root) unless defined?(@git)
+      @git = Git.open(root) unless defined?(@git)
       @git
     end
 
     def current_branch
-      Branch.new(@root, git.current_branch)
-    end
-
-    def add_current_branch
-      branch = current_branch
-      branch.setup
-      branch.checkpoint(git)
+      Branch.new(@repository, git.current_branch)
     end
 
     def edit(filepath)
       pathname = Pathname(filepath).expand_path
-      relative = pathname.relative_path_from(@root.name)
+      relative = pathname.relative_path_from(root)
       branch = current_branch
       checkpoint = branch.current_checkpoint
       target_path = checkpoint.files_dir + relative
@@ -82,11 +79,8 @@ module Gat
     end
 
     def write_default_message(default_message)
-      message_file = @root.gat_file('CHECK_MSG')
-      message_file.open('w') do |f|
-        f.puts(default_message)
-      end
-      message_file
+      @settings[CHECK_MESSAGE_FILENAME] = default_message
+      @settings.file_for(CHECK_MESSAGE_FILENAME)
     end
 
     def message_with_default(default_message)
@@ -113,8 +107,10 @@ module Gat
       checkpoint = branch.current_checkpoint
       if !checkpoint.change?
         warn "No changes to check with, updating to HEAD."
-        checkpoint.remove
+        branch.remove_checkpoint(checkpoint)
         branch.checkpoint(git)
+      elsif git.local_change?
+        warn "Error: cannot integrate checkpoint with local changes in git."
       else
         message ||= message_with_default(branch.default_message_for(checkpoint))
         if message.nil? || message.empty?

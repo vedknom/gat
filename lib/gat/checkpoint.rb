@@ -7,76 +7,60 @@ require 'bundler/setup'
 require 'securerandom'
 
 require 'gat/path'
+require 'gat/git'
 
 module Gat
   class Checkpoint
-    attr_reader :id, :tracking
+    attr_reader :repository
 
-    def self.from(dirpath, id)
-      dir = dirpath + id
-      tracking = (dir + 'tracking').open('r').readline.chomp
-      new(dirpath, tracking, id)
-    end
+    TRACKING_KEY = 'tracking'
+    FILES_KEY = 'files'
+    CHECKING_KEY = 'checking'
+    COMMIT_KEY = 'commit_sha'
+    CONFLICT_KEY = 'conflict'
 
-    def initialize(dirpath, commitish, id = SecureRandom.uuid)
-      @dirpath = dirpath
-      @tracking = commitish
-      @id = id
+    def initialize(branch, id = SecureRandom.uuid)
+      @repository = branch.repository
+      @branch_name = branch.name
+      @settings = repository.checkpoint_settings(branch.name, id)
     end
 
     def to_s
       id
     end
 
-    def checkpoint_dir
-      @dirpath + id
+    def id
+      @settings.name
     end
 
-    def checkpoint_file(filepath)
-      checkpoint_dir + filepath
+    def tracking
+      @settings[TRACKING_KEY]
+    end
+
+    def tracking=(sha)
+      @settings[TRACKING_KEY] = sha
     end
 
     def files_dir
-      checkpoint_file('files')
+      @settings.files_dir(FILES_KEY)
     end
 
-    def relative_glob
-      result = block_given? ? nil : []
-      dir = files_dir
-      Pathname.glob(dir + '**/*') do |p|
-        relative = p.relative_path_from(dir)
-        if block_given?
-          yield relative
-        else
-          result << relative
-        end
-      end
-      result
+    def relative_glob(pattern, &block)
+      @settings.files_glob(FILES_KEY, pattern, &block)
     end
 
     def add
-      dirpath = checkpoint_dir
-      if dirpath.directory?
-        warn "Error: checkpoint already exists #{checkpoint}"
-      else
-        dirpath.mkdir
-        checkpoint_file('tracking').open('w') do |f|
-          f.puts(tracking)
-        end
+      unless @settings.setup
+        warn "Error: checkpoint already exists #{self}"
       end
     end
 
     def change?
-      change = false
-      Pathname.glob(files_dir + '**/*') do |p|
-        change = true
-        break
-      end
-      change
+      !@settings.files_empty?(FILES_KEY)
     end
 
     def checking?
-      checkpoint_file('checking').exist?
+      @settings.include?(CHECKING_KEY)
     end
 
     def check(message)
@@ -84,26 +68,75 @@ module Gat
       if already_checking
         warn "Error: checkpoint '#{self}' is already checking"
       else
-        checkpoint_file('checking').open('w') { |f| f.write(message) }
+        @settings[CHECKING_KEY] = message
       end
       !already_checking
     end
 
+    def conflict?
+      @settings.bool_value(CONFLICT_KEY)
+    end
+
+    def conflict=(boolean)
+      @settings[CONFLICT_KEY] = boolean
+    end
+
+    def committed?
+      @settings.include?(COMMIT_KEY)
+    end
+
+    def commit_sha
+      @settings[COMMIT_KEY]
+    end
+
+    def commit_sha=(sha)
+      @settings[COMMIT_KEY] = sha
+    end
+
+    def copy_files_to(filepath)
+      Path.rsync(files_dir, filepath)
+    end
+
+    def commit_changes(git)
+      message = @settings[CHECKING_KEY]
+      git.commit_all(message)
+    end
+
+    def detached_commit(git)
+      git.switch_branch(tracking) do
+        copy_files_to(git.dir.path)
+        commit_changes(git)
+        git.head_sha
+      end
+    end
+
+    def cherrypick(sha, git)
+      git.run('cherry-pick', [sha])
+    end
+
+    def integrate_commit(detached_sha, git)
+      begin
+        tracking = git.head_sha
+        cherrypick(detached_sha, git)
+        commit_sha = git.head_sha
+      rescue Git::GitExecuteError => e
+        conflict = true
+        puts("#{e}")
+      end
+    end
+
     def commit(git)
-      already_committed = checkpoint_file('commit').exist?
-      if already_committed
+      if conflict?
+        warn "Error: checkpoint is in conflict, use 'gat resolve' when resolved"
+      elsif committed?
         warn "Error: checkpoint '#{self}' has already been committed"
       else
-        Path.rsync(files_dir, git.dir.path)
-        message = checkpoint_file('checking').open('r') { |f| f.read }
-        git.commit_all(message)
-        commit_sha = git.revparse('HEAD')
-        checkpoint_file('commit').open('w') { |f| f.puts(commit_sha) }
+        integrate_commit(detached_commit(git), git)
       end
     end
 
     def remove
-      FileUtils.rm_r(checkpoint_dir)
+      @settings.remove
     end
   end
 end
