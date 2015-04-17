@@ -16,15 +16,13 @@ module Gat
 
     desc 'edit FILE', 'Edit FILE inside current checkpoint'
     def edit(filepath)
-      gat = Gat.open(filepath)
-      gat.edit(filepath)
+      Gat.edit(filepath)
     end
 
     desc 'check', 'Checkpoint current changes'
     option :message, :aliases => :m
     def check
-      gat = Gat.open('.')
-      gat.check(options[:message])
+      Gat.check('.', options[:message])
     end
   end
 end
