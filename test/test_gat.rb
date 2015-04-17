@@ -14,7 +14,7 @@ require 'stringio'
 
 require 'git'
 require 'gat/gat'
-
+require 'gat/git'
 
 class TestGatSpec < MiniTest::Spec
   attr_reader :git
@@ -41,8 +41,8 @@ class TestGatSpec < MiniTest::Spec
     git.add(pathname.to_path)
   end
 
-  def heredoc_file(name, content)
-    file(name, content.gsub(/^\s+\|/, ''))
+  def heredoc(content)
+    content.gsub(/^\s+\|/, '')
   end
 
   def setup_git
@@ -101,19 +101,47 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.edit(filepath)
   end
 
-  def gat_check
-    Gat::Gat.check(root)
+  def gat_check(message = nil)
+    Gat::Gat.check(root, message)
+  end
+
+  def gat_open
+    Gat::Gat.open(root)
+  end
+
+  def gat_edit_filepath(filepath)
+    out, err = capture_io { gat_edit(filepath) }
+    err.must_be_empty
+    Pathname(out.chomp)
+  end
+
+  def git_has_change?
+    @git.local_change?
+  end
+
+  def git_commit_test1
+    @git.commit_all('Changes to test1')
+  end
+
+  def checkpoint_must_track_head
+    gat = gat_open
+    tracking = gat.current_branch.current_checkpoint.tracking
+    tracking.must_equal @git.head_sha
   end
 
   def check_should_err1(err)
     should_err1(err) { gat_check}
   end
 
-  def change0_test1
-    heredoc_file 'test1.txt', <<-EOS
+  def change0_test1_text
+    heredoc <<-EOS
       |This is a simple test
       |This is an added line for testing
     EOS
+  end
+
+  def change0_test1
+    file 'test1.txt', change0_test1_text
   end
 end
 
@@ -159,23 +187,31 @@ class TestGatCommands < TestGatSpec
   describe 'Gat edit' do
     it 'copies file from Git to Gat' do
       filepath = root + 'test1.txt'
-      out, err = capture_io { gat_edit(filepath) }
-      gat_filepath = out.chomp
+      gat_filepath = gat_edit_filepath(filepath)
       filepath.to_s.wont_equal gat_filepath
       files_should_have_same_content filepath, gat_filepath
+    end
+
+    it 'uses same filepath for the same file' do
+      filepath = root + 'test1.txt'
+      gat_filepath0 = gat_edit_filepath(filepath)
+      gat_filepath1 = gat_edit_filepath(filepath)
+      gat_filepath0.must_equal gat_filepath1
     end
   end
 
   describe 'Gat check' do
     it 'does nothing when checkpoint is empty and update-to-date' do
       check_should_err1 'No changes to check with, already up-to-date.'
+      checkpoint_must_track_head
     end
 
     it 'updates to HEAD when checkpoint is empty but not update-to-date' do
       silent { gat_check }
       change0_test1
-      @git.commit_all('Changes to test1')
+      git_commit_test1
       check_should_err1 'No changes to check with, updating to HEAD.'
+      checkpoint_must_track_head
     end
 
     it 'does not allow checking with local changes in Git' do
@@ -186,6 +222,18 @@ class TestGatCommands < TestGatSpec
       change0_test1
       err = 'Error: cannot integrate checkpoint with local changes in git.'
       check_should_err1 err
+    end
+
+    it 'commits checkpoint changes to Git for testing' do
+      silent { gat_check }
+      filepath = root + 'test1.txt'
+      gat_filepath = gat_edit_filepath(filepath)
+      gat_filepath.open('w') do |f|
+        f.write(change0_test1_text)
+      end
+      gat_check('Check with changes')
+      files_should_have_same_content filepath, gat_filepath
+      git_has_change?.must_equal false
     end
   end
 end
