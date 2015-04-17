@@ -25,7 +25,8 @@ module Gat
     end
 
     def self.git_root(filepath)
-      from_git(filepath).git_root
+      path = from_git(filepath)
+      path.git_root unless path.nil?
     end
 
     def self.mkfilepaths(prefix, spec)
