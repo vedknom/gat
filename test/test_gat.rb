@@ -108,8 +108,12 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.edit(filepath)
   end
 
-  def gat_check(force = false, message = nil)
-    Gat::Gat.check(root, force, message)
+  def gat_check(message = nil)
+    Gat::Gat.check(root, false, message)
+  end
+
+  def gat_force_check(message = nil)
+    Gat::Gat.check(root, true, message)
   end
 
   def gat_open
@@ -122,7 +126,7 @@ class TestGatSpec < MiniTest::Spec
     Pathname(out.chomp)
   end
 
-  def gat_edit_file_should_have_same_content(relative_filepath)
+  def gat_edit_file_should_have_same_content_as_git(relative_filepath)
     filepath = root + relative_filepath
     gat_filepath = gat_edit_filepath(filepath)
     filepath.to_s.wont_equal gat_filepath
@@ -137,6 +141,22 @@ class TestGatSpec < MiniTest::Spec
     gat_filepath
   end
 
+  def gat_write_change0_file(filepath = nil)
+    gat_write_file(filepath, change0_test1_text)
+  end
+
+  def gat_write_change0_test1
+    gat_write_file(filepath1, change0_test1_text)
+  end
+
+  def gat_write_change1_file(filepath = nil)
+    gat_write_file(filepath, change1_test1_text)
+  end
+
+  def gat_write_change1_test1
+    gat_write_file(filepath1, change1_test1_text)
+  end
+
   def gat_conflict?
     gat = gat_open
     gat.current_branch.current_checkpoint.conflict?
@@ -147,7 +167,7 @@ class TestGatSpec < MiniTest::Spec
   end
 
   def git_commit_change0_test1
-    change0_test1
+    apply_change0_test1
     @git.commit_all('Changes to test1')
   end
 
@@ -168,7 +188,7 @@ class TestGatSpec < MiniTest::Spec
     EOS
   end
 
-  def change0_test1
+  def apply_change0_test1
     file 'test1.txt', change0_test1_text
   end
 
@@ -177,6 +197,14 @@ class TestGatSpec < MiniTest::Spec
       |This is a whole different test
       |This will definitely conflict
     EOS
+  end
+
+  def filepath1
+    root + 'test1.txt'
+  end
+
+  def filepath2
+    root + 'test2.txt'
   end
 end
 
@@ -221,26 +249,23 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat edit' do
     it 'copies file from Git to Gat' do
-      all_test_files.each do |relative|
-        gat_edit_file_should_have_same_content relative
+      all_test_files.each do |filepath|
+        gat_edit_file_should_have_same_content_as_git filepath
       end
     end
 
     it 'uses same filepath for the same file' do
-      filepath = root + 'test1.txt'
-      gat_filepath0 = gat_edit_filepath(filepath)
-      gat_filepath1 = gat_edit_filepath(filepath)
+      gat_filepath0 = gat_edit_filepath(filepath1)
+      gat_filepath1 = gat_edit_filepath(filepath1)
       gat_filepath0.must_equal gat_filepath1
     end
 
     it 'copies file from previous checkpoint if available' do
       silent { gat_check }
-      filepath1 = root + 'test1.txt'
-      gat_filepath1 = gat_write_file(filepath1, change0_test1_text)
-      gat_check(false, 'First check with changes')
-      filepath2 = root + 'test2.txt'
-      gat_filepath2 = gat_write_file(filepath2, change0_test1_text)
-      gat_check(false, 'Second check with changes')
+      gat_write_change0_test1
+      gat_check('First check with changes')
+      gat_filepath2 = gat_write_change0_file(filepath2)
+      gat_check('Second check with changes')
       gat_filepath2_1 = gat_edit_filepath(filepath2)
       files_should_have_same_content gat_filepath2_1, gat_filepath2
     end
@@ -253,7 +278,7 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'can be forced to have empty checkpoint to check changes in HEAD' do
-      should_have_no_output { gat_check(true) }
+      should_have_no_output { gat_force_check }
       gat = gat_open
       gat.current_branch.queue_size.must_equal 2
     end
@@ -268,30 +293,28 @@ class TestGatCommands < TestGatSpec
     it 'does not allow checking with local changes in Git' do
       silent do
         gat_check
-        gat_edit(root + 'test1.txt')
+        gat_edit(filepath1)
       end
-      change0_test1
+      apply_change0_test1
       err = 'Error: cannot integrate checkpoint with local changes in git.'
       check_should_err1 err
     end
 
     it 'commits checkpoint changes to Git for testing' do
       silent { gat_check }
-      filepath = root + 'test1.txt'
-      gat_filepath = gat_write_file(filepath, change0_test1_text)
-      gat_check(false, 'Check with changes')
-      files_should_have_same_content filepath, gat_filepath
+      gat_filepath = gat_write_change0_test1
+      gat_check('Check with changes')
+      files_should_have_same_content filepath1, gat_filepath
       git_has_change?.must_equal false
     end
 
     it 'can conflict with changes in Git' do
       silent { gat_check }
-      filepath = root + 'test1.txt'
-      gat_write_file(filepath, change1_test1_text)
+      gat_write_change1_test1
       git_commit_change0_test1
       gat = gat_open
       gat_conflict?.must_equal false
-      silent { gat_check(false, 'Check will conflict') }
+      silent { gat_check('Check will conflict') }
       gat_conflict?.must_equal true
     end
   end
