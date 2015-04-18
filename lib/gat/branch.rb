@@ -105,9 +105,10 @@ module Gat
       first = queue_size == 1
       checking = current.check(message)
       if checking && first
-        commit(current, git)
+        sha = commit(current, git)
+        failed = sha.nil?
       end
-      checkpoint(git)
+      checkpoint(git) unless failed
     end
 
     def check_nochange(current, git)
@@ -138,9 +139,8 @@ module Gat
 
     def commit(checkpoint, git)
       commit_sha = checkpoint.commit(git)
-      unless commit_sha.nil?
-        adjust_subsequent(checkpoint, commit_sha)
-      end
+      adjust_subsequent(checkpoint, commit_sha) unless commit_sha.nil?
+      commit_sha
     end
   end
 end

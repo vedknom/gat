@@ -119,11 +119,25 @@ class TestGatSpec < MiniTest::Spec
     Pathname(out.chomp)
   end
 
+  def gat_write_file(filepath, content)
+    gat_filepath = gat_edit_filepath(filepath)
+    gat_filepath.open('w') do |f|
+      f.write(content)
+    end
+    gat_filepath
+  end
+
+  def gat_conflict?
+    gat = gat_open
+    gat.current_branch.current_checkpoint.conflict?
+  end
+
   def git_has_change?
     @git.local_change?
   end
 
-  def git_commit_test1
+  def git_commit_change0_test1
+    change0_test1
     @git.commit_all('Changes to test1')
   end
 
@@ -146,6 +160,13 @@ class TestGatSpec < MiniTest::Spec
 
   def change0_test1
     file 'test1.txt', change0_test1_text
+  end
+
+  def change1_test1_text
+    heredoc <<-EOS
+      |This is a whole different test
+      |This will definitely conflict
+    EOS
   end
 end
 
@@ -218,8 +239,7 @@ class TestGatCommands < TestGatSpec
 
     it 'updates to HEAD when checkpoint is empty but not update-to-date' do
       silent { gat_check }
-      change0_test1
-      git_commit_test1
+      git_commit_change0_test1
       check_should_err1 'No changes to check with, updating to HEAD.'
       checkpoint_must_track_head
     end
@@ -237,13 +257,21 @@ class TestGatCommands < TestGatSpec
     it 'commits checkpoint changes to Git for testing' do
       silent { gat_check }
       filepath = root + 'test1.txt'
-      gat_filepath = gat_edit_filepath(filepath)
-      gat_filepath.open('w') do |f|
-        f.write(change0_test1_text)
-      end
+      gat_filepath = gat_write_file(filepath, change0_test1_text)
       gat_check(false, 'Check with changes')
       files_should_have_same_content filepath, gat_filepath
       git_has_change?.must_equal false
+    end
+
+    it 'can conflict with changes in Git' do
+      silent { gat_check }
+      filepath = root + 'test1.txt'
+      gat_write_file(filepath, change1_test1_text)
+      git_commit_change0_test1
+      gat = gat_open
+      gat_conflict?.must_equal false
+      silent { gat_check(false, 'Check will conflict') }
+      gat_conflict?.must_equal true
     end
   end
 end
