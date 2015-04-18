@@ -45,13 +45,26 @@ module Gat
     end
 
     def self.rsync(source_filepath, target_filepath, mkdir = false)
+      source_pathname = Pathname(source_filepath)
+      target_pathname = Pathname(target_filepath)
+      if source_pathname.exist?
+        target = target_pathname.to_path
+        source = source_pathname.to_path
+        source += '/.' unless mkdir || !source_pathname.directory?
+        FileUtils.cp_r(source, target)
+      end
+    end
+
+    def self.rsync_alt(source_filepath, target_filepath, mkdir = false)
       target = Pathname(target_filepath)
       source = Pathname(source_filepath)
       target += source.basename if mkdir
       Pathname.glob(source + '**/*') do |f|
         unless f.directory?
           relative = f.relative_path_from(source)
-          FileUtils.cp(f, target + relative)
+          target_file = target + relative
+          FileUtils.mkdir_p(target_file.dirname)
+          FileUtils.cp(f, target_file)
         end
       end
     end

@@ -42,9 +42,11 @@ module Gat
 
     def add_checkpoint(checkpoint)
       unless checkpoint.nil?
+        previous = current_checkpoint
         checkpoint.add
         @settings.list_add(QUEUE_KEY, checkpoint.id)
-        @settings[CURRENT_KEY] = checkpoint.id
+        self.current_checkpoint_id = checkpoint.id
+        previous.copy_files_to(checkpoint.files_dir) unless previous.nil?
       end
     end
 
@@ -61,7 +63,7 @@ module Gat
     end
 
     def checkpoint_for(id)
-      Checkpoint.new(self, id)
+      Checkpoint.new(self, id) unless id.nil?
     end
 
     def first_checkpoint_id
@@ -74,6 +76,10 @@ module Gat
 
     def current_checkpoint_id
       @settings[CURRENT_KEY]
+    end
+
+    def current_checkpoint_id=(id)
+      @settings[CURRENT_KEY] = id
     end
 
     def current_checkpoint
