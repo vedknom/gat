@@ -50,11 +50,14 @@ class TestGatSpec < MiniTest::Spec
     @git = Git.init(root.to_path)
   end
 
+  def all_test_files
+    ['test1.txt', 'test2.txt', 'sub/subtest1.txt', 'sub/subtest2.txt']
+  end
+
   def add_files
-    file 'test1.txt', 'This is a simple test'
-    file 'test2.txt', 'This is another test'
-    file 'sub/subtest1.txt', 'This is a test in subdir'
-    file 'sub/subtest2.txt', 'This is another test in subdir'
+    all_test_files.each do |relative|
+      file relative, "This is a test file #{relative}"
+    end
     @git.commit_all('Initial import')
   end
 
@@ -117,6 +120,13 @@ class TestGatSpec < MiniTest::Spec
     out, err = capture_io { gat_edit(filepath) }
     err.must_be_empty
     Pathname(out.chomp)
+  end
+
+  def gat_edit_file_should_have_same_content(relative_filepath)
+    filepath = root + relative_filepath
+    gat_filepath = gat_edit_filepath(filepath)
+    filepath.to_s.wont_equal gat_filepath
+    files_should_have_same_content filepath, gat_filepath
   end
 
   def gat_write_file(filepath, content)
@@ -211,10 +221,9 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat edit' do
     it 'copies file from Git to Gat' do
-      filepath = root + 'test1.txt'
-      gat_filepath = gat_edit_filepath(filepath)
-      filepath.to_s.wont_equal gat_filepath
-      files_should_have_same_content filepath, gat_filepath
+      all_test_files.each do |relative|
+        gat_edit_file_should_have_same_content relative
+      end
     end
 
     it 'uses same filepath for the same file' do
@@ -222,6 +231,18 @@ class TestGatCommands < TestGatSpec
       gat_filepath0 = gat_edit_filepath(filepath)
       gat_filepath1 = gat_edit_filepath(filepath)
       gat_filepath0.must_equal gat_filepath1
+    end
+
+    it 'copies file from previous checkpoint if available' do
+      silent { gat_check }
+      filepath1 = root + 'test1.txt'
+      gat_filepath1 = gat_write_file(filepath1, change0_test1_text)
+      gat_check(false, 'First check with changes')
+      filepath2 = root + 'test2.txt'
+      gat_filepath2 = gat_write_file(filepath2, change0_test1_text)
+      gat_check(false, 'Second check with changes')
+      gat_filepath2_1 = gat_edit_filepath(filepath2)
+      files_should_have_same_content gat_filepath2_1, gat_filepath2
     end
   end
 
