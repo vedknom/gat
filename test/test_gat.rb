@@ -237,7 +237,7 @@ class TestGatCommands < TestGatSpec
       gat.current_branch.queue_size.must_equal 2
     end
 
-    it 'updates to HEAD when checkpoint is empty but not update-to-date' do
+    it 'updates to HEAD when checkpoint is empty but not up-to-date' do
       silent { gat_check }
       git_commit_change0_test1
       check_should_err1 'No changes to check with, updating to HEAD.'
