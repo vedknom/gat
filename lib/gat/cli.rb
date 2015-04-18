@@ -21,8 +21,9 @@ module Gat
 
     desc 'check', 'Checkpoint current changes'
     option :message, :aliases => :m
+    option :force, :type => :boolean, :aliases => :f
     def check
-      Gat.check('.', options[:message])
+      Gat.check('.', options[:force], options[:message])
     end
   end
 end

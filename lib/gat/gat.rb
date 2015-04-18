@@ -30,9 +30,9 @@ module Gat
       gat.edit(filepath)
     end
 
-    def self.check(filepath, message = nil)
+    def self.check(filepath, force = false, message = nil)
       gat = Gat.open(filepath)
-      gat.check(message)
+      gat.check(force, message)
     end
 
     def self.open(filepath)
@@ -107,13 +107,15 @@ module Gat
       message
     end
 
-    def check_nochange(branch, checkpoint)
-      if checkpoint.tracking == git.head_sha
+    def check_nochange(branch, checkpoint, force)
+      update_to_date = checkpoint.tracking == git.head_sha
+      checkpoint.tracking = git.head_sha unless update_to_date
+      if force
+        branch.check_nochange(checkpoint, git)
+      elsif update_to_date
         warn 'No changes to check with, already up-to-date.'
       else
         warn 'No changes to check with, updating to HEAD.'
-        branch.remove_checkpoint(checkpoint)
-        branch.checkpoint(git)
       end
     end
 
@@ -122,7 +124,7 @@ module Gat
       if message.nil? || message.empty?
         warn 'Not checking due to empty check message.'
       else
-        branch.check(git, message)
+        branch.check(checkpoint, message, git)
       end
     end
 
@@ -130,11 +132,11 @@ module Gat
       warn 'Error: cannot integrate checkpoint with local changes in git.'
     end
     
-    def check(message)
+    def check(force, message)
       branch = current_branch
       checkpoint = branch.current_checkpoint
       if !checkpoint.change?
-        check_nochange(branch, checkpoint)
+        check_nochange(branch, checkpoint, force)
       elsif git.local_change?
         check_local_change(branch, checkpoint)
       else

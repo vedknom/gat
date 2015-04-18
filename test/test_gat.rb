@@ -73,12 +73,16 @@ class TestGatSpec < MiniTest::Spec
     block.must_output out, err
   end
 
+  def should_have_no_output(&block)
+    should_output '', '', &block
+  end
+
   def should_err1(err, &block)
     should_err(err + "\n", &block)
   end
 
   def should_err(err, &block)
-    block.must_output '', err, &block
+    should_output '', err, &block
   end
 
   def should_out1(out, &block)
@@ -101,8 +105,8 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.edit(filepath)
   end
 
-  def gat_check(message = nil)
-    Gat::Gat.check(root, message)
+  def gat_check(force = false, message = nil)
+    Gat::Gat.check(root, force, message)
   end
 
   def gat_open
@@ -130,7 +134,7 @@ class TestGatSpec < MiniTest::Spec
   end
 
   def check_should_err1(err)
-    should_err1(err) { gat_check}
+    should_err1(err) { gat_check }
   end
 
   def change0_test1_text
@@ -206,6 +210,12 @@ class TestGatCommands < TestGatSpec
       checkpoint_must_track_head
     end
 
+    it 'can be forced to have empty checkpoint to check changes in HEAD' do
+      should_have_no_output { gat_check(true) }
+      gat = gat_open
+      gat.current_branch.queue_size.must_equal 2
+    end
+
     it 'updates to HEAD when checkpoint is empty but not update-to-date' do
       silent { gat_check }
       change0_test1
@@ -231,7 +241,7 @@ class TestGatCommands < TestGatSpec
       gat_filepath.open('w') do |f|
         f.write(change0_test1_text)
       end
-      gat_check('Check with changes')
+      gat_check(false, 'Check with changes')
       files_should_have_same_content filepath, gat_filepath
       git_has_change?.must_equal false
     end

@@ -101,13 +101,17 @@ module Gat
       default_header.join("\n")
     end
 
-    def check(git, message)
+    def check(current, message, git)
       first = queue_size == 1
-      current = current_checkpoint
       checking = current.check(message)
       if checking && first
         commit(current, git)
       end
+      checkpoint(git)
+    end
+
+    def check_nochange(current, git)
+      current.check('Pseudo checkpoint with no changes')
       checkpoint(git)
     end
 
