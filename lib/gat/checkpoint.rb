@@ -50,14 +50,32 @@ module Gat
       @settings.files_glob(FILES_KEY, pattern, &block)
     end
 
+    def file_content(filepath)
+      @settings.file_content(FILES_KEY, filepath)
+    end
+
     def add
       unless @settings.setup
         warn "Error: checkpoint already exists #{self}"
       end
     end
 
-    def change?
+    def has_file?
       !@settings.files_empty?(FILES_KEY)
+    end
+
+    def file_pathname(filepath)
+      @settings.file_pathname(FILES_KEY, filepath)
+    end
+
+    def change?(git)
+      relative_glob('**/*') do |p|
+        unless p.directory? || file_pathname(p).directory?
+          git_content = git.show(tracking, p)
+          return true if git_content != file_content(p)
+        end
+      end
+      return false
     end
 
     def checking?

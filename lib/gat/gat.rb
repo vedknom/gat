@@ -165,7 +165,7 @@ module Gat
     def check(force, message)
       branch = current_branch
       checkpoint = branch.current_checkpoint
-      if !checkpoint.change?
+      if !checkpoint.change?(git)
         check_nochange(branch, checkpoint, force)
       elsif git.local_change?
         check_local_change(branch, checkpoint)

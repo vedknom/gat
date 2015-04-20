@@ -118,6 +118,16 @@ module Gat
       return true
     end
 
+    def file_pathname(key, filepath)
+      pathname = files_dir(key) + filepath
+      pathname
+    end
+
+    def file_content(key, filepath)
+      pathname = file_pathname(key, filepath)
+      pathname.read unless pathname.nil? || pathname.directory?
+    end
+
     def open(key, mode, &block)
       file_for(key).open(mode, &block)
     end

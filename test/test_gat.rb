@@ -185,7 +185,12 @@ class TestGatSpec < MiniTest::Spec
 
   def git_commit_change0_test1
     apply_change0_test1
-    git.commit_all('Changes to test1')
+    git.commit_all('Change0 to test1')
+  end
+
+  def git_commit_change1_test1
+    apply_change1_test1
+    git.commit_all('Change1 to test1')
   end
 
   def checkpoint_must_track_head
@@ -194,8 +199,8 @@ class TestGatSpec < MiniTest::Spec
     tracking.must_equal git.head_sha
   end
 
-  def check_should_err1(err)
-    should_err1(err) { gat_check }
+  def check_should_err1(err, message = nil)
+    should_err1(err) { gat_check(message) }
   end
 
   def change0_test1_text
@@ -318,7 +323,7 @@ class TestGatCommands < TestGatSpec
       files_should_have_same_content subfilepath2, gat_dirpath1 + 'subtest2.txt'
       # when
       gat_write_file(subfilepath1, change0_test1_text)
-      silent { gat_check('Chang subdir') }
+      silent { gat_check('Change subdir') }
       gat_dirpath2 = gat_edit_filepath(subpath1)
       # then
       gat_sub1filepath1 = gat_dirpath1 + 'subtest1.txt'
@@ -337,8 +342,14 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat check' do
     it 'does nothing when checkpoint is empty and update-to-date' do
-      check_should_err1 'No changes to check with, already up-to-date.'
+      err = 'No changes to check with, already up-to-date.'
+      # then
+      check_should_err1 err
       checkpoint_must_track_head
+      # when
+      gat_edit_filepath(filepath1)
+      # then
+      check_should_err1 err, 'Should not be comitted due to no change'
     end
 
     it 'can be forced to have empty checkpoint to check changes in HEAD' do
@@ -353,15 +364,19 @@ class TestGatCommands < TestGatSpec
       # when
       git_commit_change0_test1
       # then
-      check_should_err1 'No changes to check with, updating to HEAD.'
+      err = 'No changes to check with, updating to HEAD.'
+      check_should_err1 err
       checkpoint_must_track_head
+      # when
+      git_commit_change1_test1
+      gat_edit_filepath(filepath1)
+      # then
+      check_should_err1 err, 'Should not be comitted due to no change'
     end
 
     it 'does not allow checking with local changes in Git' do
-      silent do
-        gat_check
-        gat_edit(filepath1)
-      end
+      silent { gat_check }
+      gat_write_change1_test1
       # when
       apply_change0_test1
       # then
