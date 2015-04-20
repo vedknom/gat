@@ -226,6 +226,14 @@ class TestGatSpec < MiniTest::Spec
   def filepath2
     root + 'test2.txt'
   end
+
+  def subfilepath1
+    root + 'sub/subtest1.txt'
+  end
+
+  def subfilepath2
+    root + 'sub/subtest2.txt'
+  end
 end
 
 class TestGatInit < TestGatSpec
@@ -295,6 +303,13 @@ class TestGatCommands < TestGatSpec
       gat_filepath2_1 = gat_edit_filepath(filepath2)
       # then
       files_should_have_same_content gat_filepath2_1, gat_filepath2
+    end
+
+    it 'copies all files if editing a directory' do
+      silent { gat_check }
+      gat_dirpath = gat_edit_filepath('sub')
+      files_should_have_same_content subfilepath1, gat_dirpath + 'subtest1.txt'
+      files_should_have_same_content subfilepath2, gat_dirpath + 'subtest2.txt'
     end
   end
 
