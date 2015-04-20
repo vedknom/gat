@@ -30,5 +30,10 @@ module Gat
     def resolve
       Gat.resolve('.')
     end
+
+    desc 'next', 'Mark first checkpoint as success and proceed to next'
+    def next
+      Gat.next('.')
+    end
   end
 end

@@ -14,6 +14,7 @@ module Gat
 
     QUEUE_KEY = 'queue'
     CURRENT_KEY = 'current'
+    HISTORY_KEY = 'history'
 
     def initialize(repository, name)
       @repository = repository
@@ -54,6 +55,7 @@ module Gat
       unless checkpoint.nil?
         checkpoint.remove
         id = @settings.list_shift(QUEUE_KEY)
+        @settings.list_add(HISTORY_KEY, id)
         unless id == checkpoint.id
           puts "id: #{id.length} checkpoint: #{checkpoint.id.length}"
           raise "Commit non-first checkpoint #{checkpoint} expects #{id}"
@@ -147,6 +149,19 @@ module Gat
       commit_sha = checkpoint.commit(git)
       adjust_subsequent(checkpoint, commit_sha) unless commit_sha.nil?
       commit_sha
+    end
+
+    def check_next(git)
+      checkpoint = first_checkpoint
+      unless checkpoint.nil?
+        if !checkpoint.committed?
+          warn "Error: checkpoint is not committed yet #{checkpoint}"
+        else
+          remove_checkpoint(checkpoint)
+        end
+      end
+      current_first = first_checkpoint
+      commit(current_first, git) unless current_first.nil?
     end
   end
 end

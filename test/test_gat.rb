@@ -100,6 +100,10 @@ class TestGatSpec < MiniTest::Spec
     File.read(file0).must_equal File.read(file1)
   end
 
+  def files_wont_have_same_content(file0, file1)
+    File.read(file0).wont_equal File.read(file1)
+  end
+
   def gat_init
     Gat::Gat.init(root)
   end
@@ -118,6 +122,10 @@ class TestGatSpec < MiniTest::Spec
 
   def gat_resolve
     Gat::Gat.resolve(root)
+  end
+
+  def gat_next()
+    Gat::Gat.next(root)
   end
 
   def gat_open
@@ -161,9 +169,13 @@ class TestGatSpec < MiniTest::Spec
     gat_write_file(filepath1, change1_test1_text)
   end
 
-  def gat_conflict?
+  def gat_current_checkpoint
     gat = gat_open
-    gat.current_branch.current_checkpoint.conflict?
+    gat.current_branch.current_checkpoint
+  end
+
+  def gat_conflict?
+    gat_current_checkpoint.conflict?
   end
 
   def git_has_change?
@@ -382,6 +394,31 @@ class TestGatCommands < TestGatSpec
       # then
       gat_resolve
       gat_conflict?.must_equal false
+    end
+  end
+
+  describe 'Gat next' do
+    it 'marks current checkpoint as success and proceeds to next' do
+      # given
+      silent { gat_check }
+      initial = gat_current_checkpoint
+      initial.exist?.must_equal true
+      gat_filepath1_0 = gat_write_change0_test1
+      # when
+      silent { gat_check('Check change 0') }
+      # then
+      initial.committed?.must_equal true
+      # given
+      gat_filepath1_1 = gat_write_change1_test1
+      silent { gat_check('Check change 1') }
+      # and
+      files_should_have_same_content filepath1, gat_filepath1_0
+      files_wont_have_same_content filepath1, gat_filepath1_1
+      # when
+      gat_next
+      # then
+      initial.exist?.must_equal false
+      files_should_have_same_content filepath1, gat_filepath1_1
     end
   end
 end

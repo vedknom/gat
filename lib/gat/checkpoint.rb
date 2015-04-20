@@ -18,6 +18,7 @@ module Gat
     CHECKING_KEY = 'checking'
     COMMIT_KEY = 'commit_sha'
     CONFLICT_KEY = 'conflict'
+    TRASH_KEY = 'trash'
 
     def initialize(branch, id = SecureRandom.uuid)
       @repository = branch.repository
@@ -93,6 +94,14 @@ module Gat
       @settings[COMMIT_KEY] = sha
     end
 
+    def trash?
+      @settings.bool_value(TRASH_KEY)
+    end
+
+    def trash
+      @settings[TRASH_KEY] = true
+    end
+
     def copy_files_to(filepath)
       Path.rsync(files_dir, filepath)
     end
@@ -163,7 +172,13 @@ module Gat
     end
 
     def remove
-      @settings.remove
+      # @settings.remove
+      trash
+    end
+
+    def exist?
+      # @settings.exist?
+      !trash?
     end
   end
 end

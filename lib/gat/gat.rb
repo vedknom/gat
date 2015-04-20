@@ -40,6 +40,11 @@ module Gat
       gat.resolve
     end
 
+    def self.next(filepath)
+      gat = Gat.open(filepath)
+      gat.next
+    end
+
     def self.open(filepath)
       path = Path.git_root(filepath)
       repo = Repository.new(path)
@@ -152,7 +157,12 @@ module Gat
     def resolve
       branch = current_branch
       checkpoint = branch.current_checkpoint
-      checkpoint.resolve(git)
+      checkpoint.resolve(git) unless checkpoint.nil?
+    end
+
+    def next
+      branch = current_branch
+      branch.check_next(git)
     end
   end
 end
