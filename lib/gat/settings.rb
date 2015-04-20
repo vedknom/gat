@@ -92,7 +92,7 @@ module Gat
     end
 
     def list_set_values(key, values)
-      write(key, values.join("\n"))
+      write(key, values.join("\n") + (values.empty? ? '' : "\n"))
     end
 
     def files_dir(key)
