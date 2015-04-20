@@ -161,7 +161,9 @@ module Gat
         end
       end
       current_first = first_checkpoint
-      commit(current_first, git) unless current_first.nil?
+      unless current_first.nil? || !current_first.checking?
+        commit(current_first, git)
+      end
     end
   end
 end

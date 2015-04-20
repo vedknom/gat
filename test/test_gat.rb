@@ -447,11 +447,16 @@ class TestGatCommands < TestGatSpec
       # and
       files_should_have_same_content filepath1, gat_filepath1_0
       files_wont_have_same_content filepath1, gat_filepath1_1
+      gat_write_file(filepath1, 'Changes will not be checked')
       # when
-      gat_next
+      should_have_no_output { gat_next }
       # then
       initial.exist?.must_equal false
       files_should_have_same_content filepath1, gat_filepath1_1
+      # when
+      should_have_no_output { gat_next }
+      # then
+      gat_current_checkpoint.checking?.must_equal false
     end
   end
 end
