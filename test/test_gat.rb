@@ -116,6 +116,10 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.check(root, true, message)
   end
 
+  def gat_resolve
+    Gat::Gat.resolve(root)
+  end
+
   def gat_open
     Gat::Gat.open(root)
   end
@@ -163,18 +167,18 @@ class TestGatSpec < MiniTest::Spec
   end
 
   def git_has_change?
-    @git.local_change?
+    git.local_change?
   end
 
   def git_commit_change0_test1
     apply_change0_test1
-    @git.commit_all('Changes to test1')
+    git.commit_all('Changes to test1')
   end
 
   def checkpoint_must_track_head
     gat = gat_open
     tracking = gat.current_branch.current_checkpoint.tracking
-    tracking.must_equal @git.head_sha
+    tracking.must_equal git.head_sha
   end
 
   def check_should_err1(err)
@@ -197,6 +201,10 @@ class TestGatSpec < MiniTest::Spec
       |This is a whole different test
       |This will definitely conflict
     EOS
+  end
+
+  def apply_change1_test1
+    file 'test1.txt', change1_test1_text
   end
 
   def filepath1
@@ -333,12 +341,47 @@ class TestGatCommands < TestGatSpec
       gat_write_change1_test1
       git_commit_change0_test1
       # and
-      gat = gat_open
       gat_conflict?.must_equal false
+      git.conflict?.must_equal false
       # when
       silent { gat_check('Check will conflict') }
       # then
       gat_conflict?.must_equal true
+      git.conflict?.must_equal true
+    end
+  end
+
+  describe 'Gat resolve' do
+    it 'no-ops when there is no conflict' do
+      # given
+      silent { gat_check }
+      gat_conflict?.must_equal false
+      # then
+      should_err1 'No conflict to resolve' do
+        gat_resolve
+      end
+    end
+
+    it 'commits conflicted changes once resolved' do
+      # given
+      silent { gat_check }
+      gat_write_change1_test1
+      git_commit_change0_test1
+      # and
+      silent { gat_check('Check will conflict') }
+      gat_conflict?.must_equal true
+      git.conflict?.must_equal true
+      # but
+      should_err1 'Error: cannot resolve with git conflicts.' do
+        gat_resolve
+      end
+      # when
+      apply_change1_test1
+      git.conflict?.must_equal false
+      gat_conflict?.must_equal true
+      # then
+      gat_resolve
+      gat_conflict?.must_equal false
     end
   end
 end

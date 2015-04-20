@@ -111,11 +111,15 @@ module Gat
     end
 
     def cherrypick(sha, git)
-      git.run('cherry-pick', [sha])
+      git.cherrypick([sha])
     end
 
     def warn_conflict
       warn "Error: checkpoint is in conflict, use 'gat resolve' when resolved"
+    end
+
+    def git_error(e)
+      warn "Error from git: #{e}"
     end
 
     def integrate_commit(detached_sha, git)
@@ -125,7 +129,7 @@ module Gat
         self.commit_sha = git.head_sha
       rescue Git::GitExecuteError => e
         self.conflict = true
-        warn "Error from git: #{e}"
+        git_error(e)
         warn_conflict
       end
     end
@@ -139,6 +143,22 @@ module Gat
         warn "Error: cannot commit without checking first"
       else
         integrate_commit(detached_commit(git), git)
+      end
+    end
+
+    def resolve(git)
+      if !conflict?
+        warn 'No conflict to resolve'
+      elsif git.conflict?
+        warn 'Error: cannot resolve with git conflicts.'
+      else
+        begin
+          git.commit(['--no-edit'])
+          self.conflict = false
+        rescue Git::GitExecuteError => e
+          git_error(e)
+          warn 'Error: failed to resolve changes'
+        end
       end
     end
 

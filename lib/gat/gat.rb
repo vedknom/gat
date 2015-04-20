@@ -35,6 +35,11 @@ module Gat
       gat.check(force, message)
     end
 
+    def self.resolve(filepath)
+      gat = Gat.open(filepath)
+      gat.resolve
+    end
+
     def self.open(filepath)
       path = Path.git_root(filepath)
       repo = Repository.new(path)
@@ -131,7 +136,7 @@ module Gat
     def check_local_change(branch, checkpoint)
       warn 'Error: cannot integrate checkpoint with local changes in git.'
     end
-    
+
     def check(force, message)
       branch = current_branch
       checkpoint = branch.current_checkpoint
@@ -142,6 +147,12 @@ module Gat
       else
         check_branch(branch, checkpoint, message)
       end
+    end
+
+    def resolve
+      branch = current_branch
+      checkpoint = branch.current_checkpoint
+      checkpoint.resolve(git)
     end
   end
 end

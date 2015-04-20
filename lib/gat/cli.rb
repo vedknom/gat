@@ -25,5 +25,10 @@ module Gat
     def check
       Gat.check('.', options[:force], options[:message])
     end
+
+    desc 'resolve', 'Checkpoint once Git conflicts are resolved'
+    def resolve
+      Gat.resolve('.')
+    end
   end
 end

@@ -18,8 +18,16 @@ module Git
       revparse('HEAD')
     end
 
+    def cherrypick(arr_opts)
+      run('cherry-pick', arr_opts)
+    end
+
     def local_change?
       !run('diff-index', ['HEAD', '--']).empty?
+    end
+
+    def conflict?
+      !run('diff', ['--name-only', '--diff-filter=U']).empty?
     end
 
     def run(cmd, arr_opts)
