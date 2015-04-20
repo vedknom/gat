@@ -30,6 +30,16 @@ module Git
       !run('diff', ['--name-only', '--diff-filter=U']).empty?
     end
 
+    def track_file?(file)
+      result = true
+      begin
+        run('ls-files', ['--error-unmatch', Pathname(file).expand_path])
+      rescue Git::GitExecuteError => e
+        result = false
+      end
+      result
+    end
+
     def run(cmd, arr_opts)
       self.lib.run(cmd, arr_opts)
     end

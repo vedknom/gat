@@ -329,6 +329,15 @@ class TestGatCommands < TestGatSpec
       gat_sub2filepath1 = gat_dirpath2 + 'subtest1.txt'
       files_should_have_same_content gat_sub1filepath1, gat_sub2filepath1
     end
+
+    it 'should not allow editing files within Gat repo' do
+      # given
+      silent { gat_check }
+      gat_filepath0 = gat_edit_filepath(filepath1)
+      should_err1 "Error: file is not tracked by Git #{gat_filepath0}" do
+        gat_edit(gat_filepath0.expand_path)
+      end
+    end
   end
 
   describe 'Gat check' do

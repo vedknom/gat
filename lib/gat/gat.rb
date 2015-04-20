@@ -79,6 +79,14 @@ module Gat
 
     def edit(filepath)
       pathname = Pathname(filepath).expand_path
+      if !git.track_file?(pathname)
+        warn "Error: file is not tracked by Git #{pathname}"
+      else
+        edit_file(pathname)
+      end
+    end
+
+    def edit_file(pathname)
       relative = pathname.relative_path_from(root)
       branch = current_branch
       checkpoint = branch.current_checkpoint
