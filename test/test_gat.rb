@@ -97,6 +97,7 @@ class TestGatSpec < MiniTest::Spec
   end
 
   def files_should_have_same_content(file0, file1)
+    file0.wont_equal file1
     File.read(file0).must_equal File.read(file1)
   end
 
@@ -227,12 +228,16 @@ class TestGatSpec < MiniTest::Spec
     root + 'test2.txt'
   end
 
+  def subpath1
+    root + 'sub'
+  end
+
   def subfilepath1
-    root + 'sub/subtest1.txt'
+    subpath1 + 'subtest1.txt'
   end
 
   def subfilepath2
-    root + 'sub/subtest2.txt'
+    subpath1 + 'subtest2.txt'
   end
 end
 
@@ -306,10 +311,23 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'copies all files if editing a directory' do
+      # given
       silent { gat_check }
-      gat_dirpath = gat_edit_filepath('sub')
-      files_should_have_same_content subfilepath1, gat_dirpath + 'subtest1.txt'
-      files_should_have_same_content subfilepath2, gat_dirpath + 'subtest2.txt'
+      gat_write_change1_test1
+      silent { gat_check('Change 1') }
+      # when
+      gat_dirpath1 = gat_edit_filepath(subpath1)
+      # then
+      files_should_have_same_content subfilepath1, gat_dirpath1 + 'subtest1.txt'
+      files_should_have_same_content subfilepath2, gat_dirpath1 + 'subtest2.txt'
+      # when
+      gat_write_file(subfilepath1, change0_test1_text)
+      silent { gat_check('Chang subdir') }
+      gat_dirpath2 = gat_edit_filepath(subpath1)
+      # then
+      gat_sub1filepath1 = gat_dirpath1 + 'subtest1.txt'
+      gat_sub2filepath1 = gat_dirpath2 + 'subtest1.txt'
+      files_should_have_same_content gat_sub1filepath1, gat_sub2filepath1
     end
   end
 

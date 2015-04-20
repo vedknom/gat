@@ -84,10 +84,22 @@ module Gat
       checkpoint = branch.current_checkpoint
       target_path = checkpoint.files_dir + relative
       unless target_path.exist?
-        FileUtils.mkdir_p(target_path.dirname)
-        target_path.open('w') do |f|
-          content = git.show(checkpoint.tracking, relative)
-          f.print(content)
+        if pathname.directory?
+          FileUtils.mkdir_p(target_path)
+          Pathname.glob(pathname + '**/*') do |f|
+            relative_file = f.relative_path_from(root)
+            target_file = checkpoint.files_dir + relative_file
+            target_file.open('w') do |f|
+              content = git.show(checkpoint.tracking, relative_file)
+              f.print(content)
+            end
+          end
+        else
+          FileUtils.mkdir_p(target_path.dirname)
+          target_path.open('w') do |f|
+            content = git.show(checkpoint.tracking, relative)
+            f.print(content)
+          end
         end
       end
       puts(target_path)
