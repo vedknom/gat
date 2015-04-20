@@ -282,7 +282,6 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat edit' do
     it 'copies file from Git to Gat' do
-      # given
       all_test_files.each do |filepath|
         # then
         gat_edit_file_should_have_same_content_as_git filepath
@@ -290,7 +289,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'uses same filepath for the same file' do
-      # given
       gat_filepath0 = gat_edit_filepath(filepath1)
       gat_filepath1 = gat_edit_filepath(filepath1)
       # then
@@ -298,7 +296,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'copies file from previous checkpoint if available' do
-      # given
       silent { gat_check }
       gat_write_change0_test1
       gat_check('First check with changes')
@@ -311,7 +308,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'copies all files if editing a directory' do
-      # given
       silent { gat_check }
       gat_write_change1_test1
       silent { gat_check('Change 1') }
@@ -331,7 +327,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'should not allow editing files within Gat repo' do
-      # given
       silent { gat_check }
       gat_filepath0 = gat_edit_filepath(filepath1)
       should_err1 "Error: file is not tracked by Git #{gat_filepath0}" do
@@ -347,16 +342,13 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'can be forced to have empty checkpoint to check changes in HEAD' do
-      # when
       should_have_no_output { gat_force_check }
-      # and
       gat = gat_open
       # then
       gat.current_branch.queue_size.must_equal 2
     end
 
     it 'updates to HEAD when checkpoint is empty but not up-to-date' do
-      # given
       silent { gat_check }
       # when
       git_commit_change0_test1
@@ -366,7 +358,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'does not allow checking with local changes in Git' do
-      # given
       silent do
         gat_check
         gat_edit(filepath1)
@@ -379,7 +370,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'commits checkpoint changes to Git for testing' do
-      # given
       silent { gat_check }
       # when
       gat_filepath = gat_write_change0_test1
@@ -390,7 +380,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'can conflict with changes in Git' do
-      # given
       silent { gat_check }
       gat_write_change1_test1
       git_commit_change0_test1
@@ -407,7 +396,6 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat resolve' do
     it 'no-ops when there is no conflict' do
-      # given
       silent { gat_check }
       gat_conflict?.must_equal false
       # then
@@ -417,7 +405,6 @@ class TestGatCommands < TestGatSpec
     end
 
     it 'commits conflicted changes once resolved' do
-      # given
       silent { gat_check }
       gat_write_change1_test1
       git_commit_change0_test1
@@ -441,7 +428,6 @@ class TestGatCommands < TestGatSpec
 
   describe 'Gat next' do
     it 'marks current checkpoint as success and proceeds to next' do
-      # given
       silent { gat_check }
       initial = gat_current_checkpoint
       initial.exist?.must_equal true
