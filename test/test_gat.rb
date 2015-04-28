@@ -125,8 +125,12 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.resolve(root)
   end
 
-  def gat_next()
+  def gat_next
     Gat::Gat.next(root)
+  end
+
+  def gat_list
+    Gat::Gat.list(root)
   end
 
   def gat_open
@@ -467,6 +471,21 @@ class TestGatCommands < TestGatSpec
       should_have_no_output { gat_next }
       # then
       gat_current_checkpoint.checking?.must_equal false
+    end
+  end
+
+  describe 'Gat list' do
+    it 'displays list of checkpoints' do
+      silent { gat_check }
+      list = []
+      list << gat_current_checkpoint.id
+      gat_write_change0_test1
+      silent { gat_check('Check change 0') }
+      list << gat_current_checkpoint.id
+      gat_write_change1_test1
+      silent { gat_check('Check change 1') }
+      list << gat_current_checkpoint.id
+      should_out1(list.join("\n")) { gat_list }
     end
   end
 end

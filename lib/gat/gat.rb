@@ -45,6 +45,11 @@ module Gat
       gat.next
     end
 
+    def self.list(filepath)
+      gat = Gat.open(filepath)
+      gat.list
+    end
+
     def self.open(filepath)
       path = Path.git_root(filepath)
       repo = Repository.new(path)
@@ -183,6 +188,11 @@ module Gat
     def next
       branch = current_branch
       branch.check_next(git)
+    end
+
+    def list
+      branch = current_branch
+      puts(branch.queue)
     end
   end
 end

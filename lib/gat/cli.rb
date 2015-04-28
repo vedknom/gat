@@ -35,5 +35,10 @@ module Gat
     def next
       Gat.next('.')
     end
+
+    desc 'list', 'List current checkpoint'
+    def list
+      Gat.list('.')
+    end
   end
 end
