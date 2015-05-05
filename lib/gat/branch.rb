@@ -151,7 +151,7 @@ module Gat
       commit_sha
     end
 
-    def check_next(git)
+    def remove_committed_checkpoint
       checkpoint = first_checkpoint
       unless checkpoint.nil?
         if !checkpoint.committed?
@@ -160,9 +160,21 @@ module Gat
           remove_checkpoint(checkpoint)
         end
       end
+    end
+
+    def commit_checking_checkpoint(git)
       current_first = first_checkpoint
       unless current_first.nil? || !current_first.checking?
         commit(current_first, git)
+      end
+    end
+
+    def check_next(git)
+      if name != git.current_branch
+        warn 'Cannot advance checkpoint in non-current git branch'
+      else
+        remove_committed_checkpoint
+        commit_checking_checkpoint(git)
       end
     end
   end

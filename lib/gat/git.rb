@@ -14,6 +14,10 @@ module Git
   end
 
   class Base
+    def branch(name)
+      run('branch', [name])
+    end
+
     def head_sha
       revparse('HEAD')
     end

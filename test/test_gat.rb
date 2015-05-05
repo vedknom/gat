@@ -133,8 +133,16 @@ class TestGatSpec < MiniTest::Spec
     Gat::Gat.list(root)
   end
 
+  def gat_branch(name)
+    Gat::Gat.branch(root, name)
+  end
+
   def gat_open
     Gat::Gat.open(root)
+  end
+
+  def gat_setup_branch(name)
+    gat_branch(name)
   end
 
   def gat_edit_filepath(filepath)
@@ -158,7 +166,7 @@ class TestGatSpec < MiniTest::Spec
     gat_filepath
   end
 
-  def gat_write_change0_file(filepath = nil)
+  def gat_write_change0_file(filepath)
     gat_write_file(filepath, change0_test1_text)
   end
 
@@ -166,7 +174,7 @@ class TestGatSpec < MiniTest::Spec
     gat_write_file(filepath1, change0_test1_text)
   end
 
-  def gat_write_change1_file(filepath = nil)
+  def gat_write_change1_file(filepath)
     gat_write_file(filepath, change1_test1_text)
   end
 
@@ -353,7 +361,7 @@ class TestGatCommands < TestGatSpec
       # when
       gat_edit_filepath(filepath1)
       # then
-      check_should_err1 err, 'Should not be comitted due to no change'
+      check_should_err1 err, 'Should not be committed due to no change'
     end
 
     it 'can be forced to have empty checkpoint to check changes in HEAD' do
@@ -375,7 +383,7 @@ class TestGatCommands < TestGatSpec
       git_commit_change1_test1
       gat_edit_filepath(filepath1)
       # then
-      check_should_err1 err, 'Should not be comitted due to no change'
+      check_should_err1 err, 'Should not be committed due to no change'
     end
 
     it 'does not allow checking with local changes in Git' do
@@ -486,6 +494,35 @@ class TestGatCommands < TestGatSpec
       silent { gat_check('Check change 1') }
       list << gat_current_checkpoint.id
       should_out1(list.join("\n")) { gat_list }
+    end
+  end
+
+  describe 'Gat branch' do
+    it 'cannot advance in non-current git branch' do
+      gat_setup_branch('feature')
+      silent { gat_check }
+      # when
+      gat_write_change0_test1
+      silent { gat_check('Check changes 0 into feature') }
+      gat_write_change1_test1
+      silent { gat_check('Check changes 1 into feature') }
+      # then
+      err = 'Cannot advance checkpoint in non-current git branch'
+      should_err1(err) { gat_next }
+    end
+
+    it 'can continue checking when branch is current' do
+      gat_setup_branch('feature')
+      silent { gat_check }
+      # when
+      gat_write_change0_test1
+      silent { gat_check('Check changes 0 into feature') }
+      gat_write_change1_test1
+      silent { gat_check('Check changes 1 into feature') }
+      # then
+      git.checkout('feature')
+      should_have_no_output { gat_next }
+      should_have_no_output { gat_next }
     end
   end
 end

@@ -16,6 +16,7 @@ require 'gat/repository'
 module Gat
   class Gat
     CHECK_MESSAGE_FILENAME = 'CHECK_MSG'
+    CURRENT_BRANCH_KEY = 'current_branch'
 
     def self.init(filepath)
       path = Path.git_root(filepath)
@@ -50,6 +51,16 @@ module Gat
       gat.list
     end
 
+    def self.branch(filepath, name)
+      gat = Gat.open(filepath)
+      gat.branch(name)
+    end
+
+    def self.current_branch_name(filepath)
+      gat = Gat.open(filepath)
+      gat.current_branch_name
+    end
+
     def self.open(filepath)
       path = Path.git_root(filepath)
       repo = Repository.new(path)
@@ -79,7 +90,15 @@ module Gat
     end
 
     def current_branch
-      Branch.new(@repository, git.current_branch)
+      Branch.new(@repository, current_branch_name)
+    end
+
+    def current_branch_name
+      if @settings.include?(CURRENT_BRANCH_KEY)
+        @settings[CURRENT_BRANCH_KEY]
+      else
+        git.current_branch
+      end
     end
 
     def edit(filepath)
@@ -193,6 +212,23 @@ module Gat
     def list
       branch = current_branch
       puts(branch.queue)
+    end
+
+    def ensure_git_branch(name)
+      begin
+        git.revparse(name)
+      rescue Git::GitExecuteError => e
+        git.branch(name)
+      end
+    end
+
+    def branch(name)
+      if name.nil?
+        @settings.delete(CURRENT_BRANCH_KEY)
+      else
+        ensure_git_branch(name)
+        @settings[CURRENT_BRANCH_KEY] = name
+      end
     end
   end
 end

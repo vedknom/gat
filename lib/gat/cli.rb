@@ -40,5 +40,15 @@ module Gat
     def list
       Gat.list('.')
     end
+
+    desc 'branch [NAME]', 'Display or set current gat branch to NAME'
+    option :clear, :type => :boolean, :aliases => :c
+    def branch(name = nil)
+      if !options[:clear] && name.nil?
+        puts(Gat.current_branch_name('.'))
+      else
+        Gat.branch('.', name)
+      end
+    end
   end
 end
