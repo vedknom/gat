@@ -19,6 +19,7 @@ module Gat
     COMMIT_KEY = 'commit_sha'
     CONFLICT_KEY = 'conflict'
     TRASH_KEY = 'trash'
+    NOCHANGE_KEY = 'nochange'
 
     def initialize(branch, id = SecureRandom.uuid)
       @repository = branch.repository
@@ -80,6 +81,17 @@ module Gat
 
     def checking?
       @settings.include?(CHECKING_KEY)
+    end
+
+    def check_nochange
+      checking = check('Pseudo checkpoint with no changes')
+      if checking
+        @settings[NOCHANGE_KEY] = true
+      end
+    end
+
+    def check_nochange?
+      @settings.bool_value(NOCHANGE_KEY)
     end
 
     def check(message)

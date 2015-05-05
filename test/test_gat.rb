@@ -480,6 +480,11 @@ class TestGatCommands < TestGatSpec
       # then
       gat_current_checkpoint.checking?.must_equal false
     end
+
+    it 'will skip empty checkpoint and proceed to next' do
+      silent { gat_force_check }
+      should_have_no_output { gat_next }
+    end
   end
 
   describe 'Gat list' do

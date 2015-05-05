@@ -120,7 +120,7 @@ module Gat
     end
 
     def check_nochange(current, git)
-      current.check('Pseudo checkpoint with no changes')
+      current.check_nochange
       checkpoint(git)
     end
 
@@ -169,10 +169,17 @@ module Gat
       end
     end
 
+    def remove_nochange_checkpoint
+      checkpoint = first_checkpoint
+      remove = !checkpoint.nil? && checkpoint.check_nochange?
+      remove_checkpoint(checkpoint) if remove
+      remove
+    end
+
     def check_next(git)
       if name != git.current_branch
         warn 'Cannot advance checkpoint in non-current git branch'
-      else
+      elsif !remove_nochange_checkpoint
         remove_committed_checkpoint
         commit_checking_checkpoint(git)
       end
